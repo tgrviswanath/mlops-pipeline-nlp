@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  mlops-service:
+    build:
+      context: ./mlops-service
+      dockerfile: ../docker/Dockerfile.mlops
+    ports:
+      - "8001:8001"
+    volumes:
+      - ./mlops-service/mlruns:/app/mlruns
+      - ./mlops-service/models:/app/models
+    env_file: ./mlops-service/.env
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: ../docker/Dockerfile.backend
+    ports:
+      - "8000:8000"
+    env_file: ./backend/.env
+    depends_on:
+      mlops-service:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: ../docker/Dockerfile.frontend
+    ports:
+      - "3000:80"
+    depends_on:
+      - backend
